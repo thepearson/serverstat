@@ -18,6 +18,10 @@ import urllib2
 available_metrics=['cpu','load','disk','memory','network','users','processes','uptime']
 long_running_metrics=['cpu','network']
 LONG_RUNNING_SLEEP_TIME=5
+VERSION="1.0.0"
+API_PROTOCOL='http'
+API_HOST='api.serverstat.io'
+API_VERSION='v1'
 
 try:
   is_64bits = sys.maxsize > 2**32
@@ -39,9 +43,9 @@ def send(data, core, key, host):
   except:
     import simplejson as json
   current_time=time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
-  json_string=json.dumps({"host": core, current_time:data})
+  json_string=json.dumps({"host":core,current_time:data})
   opener = urllib2.build_opener(urllib2.HTTPHandler)
-  request = urllib2.Request('http://api.serverstat.io/v1/metric', data=json_string)
+  request = urllib2.Request(API_PROTOCOL+'://'+API_HOST+'/'+API_VERSION+'/metric', data=json_string)
   request.add_header('X-org-key', key)
   request.add_header('X-host-key', host)
   request.get_method = lambda: 'POST'
@@ -49,10 +53,11 @@ def send(data, core, key, host):
     response = opener.open(request)
     response.read()
     sys.exit(0)
-  except:
-    print("Error")
+  except urllib2.HTTPError, e:
+    print e.read()
     sys.exit(1)
 
+  sys.exit(0)
 
 def cpu_count():
   ''' Returns the number of CPUs in the system '''
@@ -144,7 +149,7 @@ def diskstats_parse(dev=None):
 
 
 def get_core_info():
-  return {"cpus":cpu_count(), "hostname":platform.node(), "os":platform.system(), "tz": time.tzname[time.daylight]}
+  return {"client_version":VERSION,"cpus":cpu_count(), "hostname":platform.node(), "os":platform.system(), "tz": time.tzname[time.daylight]}
 
 
 def get_network_bytes(interface):
@@ -231,26 +236,6 @@ def getmemory():
           'buffers': int(output[0].split()[5]),
           'cached': int(output[0].split()[6])}
 
-'''
-def getnetwork():
-  if debug:
-    print("getting network")
-  ret = {}
-  interfaces=all_interfaces()
-  for int in interfaces:
-    try:
-      rx1,tx1=get_network_bytes(int[0])
-      time.sleep(timeout)
-      rx2,tx2=get_network_bytes(int[0])
-      ret[int[0]] = {'addr':int[1],
-                   'rx_total':rx2,
-                   'tx_total':tx2,
-                   'rx_avg':float((rx2-rx1)/timeout),
-                   'tx_avg':float((tx2-tx1)/timeout)}
-    except:
-      pass
-  return ret
-'''
 
 def networkformatusage(first, second):
   ret = {}
@@ -325,12 +310,16 @@ def getuptime():
     pass
   return {'value':val}
 
+args=None;
+
 try:
   import argparse
   parser = argparse.ArgumentParser(description='Collect core metrics and send to the hostplot.me API')
-  parser.add_argument("key", help="Your hostplot.me account key.")
-  parser.add_argument("host", help="Your hostplot.me host UUID for this host.")
+  parser.add_argument("key", nargs='?', help="Your hostplot.me account key.")
+  parser.add_argument("host", nargs='?', help="Your hostplot.me host UUID for this host.")
   parser.add_argument("-m", "--metrics", default='all', help="The metrics you wish to run.")
+  parser.add_argument("-A", "--apihost", default=None, help="API Hostname to use, useful for development.")
+  parser.add_argument("-V", "--version", action="store_true", help="Show client version.")
   parser.add_argument("-t", "--test", default=None, help="Run a test. Allowed values are all," + ','.join(available_metrics))
   args = parser.parse_args()
   key=args.key
@@ -339,12 +328,29 @@ except ImportError:
   import optparse
   parser = optparse.OptionParser(usage="usage: %prog [-h] [-m METRICS] key host")
   parser.add_option("-m", "--metrics", default="all", dest="metrics", help="The metrics you wish to run.")
+  parser.add_option("-A", "--apihost", default=None, dest="apihost", help="API Hostname to use, useful for development..")
+  parser.add_option("-V", "--version", action="store_true", help="Show client version.")
   parser.add_option("-t", "--test", default=None, dest="test", help="Run a test. Allowed values are all," + ','.join(available_metrics))
   args, opts = parser.parse_args()
   key=opts[0]
   host=opts[1]
 
 data={}
+
+if not args:
+  sys.exit(0)
+
+if args.version is True:
+  print VERSION
+  sys.exit(0)
+
+if key is None or host is None:
+  print "Additional arguments required"
+  sys.exit(1)
+
+if args.apihost is not None:
+  API_HOST=args.apihost
+
 
 if args.test is not None:
   if "all" in args.test:
@@ -444,5 +450,4 @@ else:
       else:
         pass
 
-  print data
-  #send(data, get_core_info(), key, host)
+  send(data, get_core_info(), key, host)
