@@ -15,7 +15,7 @@ import platform;
 import urllib
 import urllib2
 
-available_metrics=['cpu','load','disk','memory','network','users','processes','uptime']
+available_metrics=['cpu','load','disk','memory','network','users','processes','apps','uptime']
 long_running_metrics=['cpu','network']
 LONG_RUNNING_SLEEP_TIME=5
 VERSION="1.0.0"
@@ -224,6 +224,55 @@ def getdisk():
   return found_disks
 
 
+def getapplication():
+  ret={}
+  if debug:
+    print("Getting application information")
+  ps=subprocess.Popen(['ps', '-eo', 'rss,comm,%cpu'],stdout=subprocess.PIPE)
+  apps=filter(None,ps.communicate()[0].split('\n')[1:])
+  for app in apps:
+    mem,cpu,proc=app.strip().split(' ')
+    if ret.has_key(proc):
+      ret[proc]=ret[command]+int(mem)
+    else:
+      ret[proc]=int(mem)
+
+
+def getapplication():
+  ret={}
+  if debug:
+    print("Getting application information")
+
+  ps=subprocess.Popen(['ps', '-eo', 'rss,%cpu,comm'],stdout=subprocess.PIPE)
+  #ps -eo rss,%cpu,comm,cmd | grep -v serverstat |awk '{print $1" "$2" "$3}'
+  #ps=subprocess.Popen(["""ps -eo rss,%cpu,comm,cmd | grep -v serverstat |awk '{print $1" "$2" "$3}'"""], shell=True, stdout=subprocess.PIPE)
+  apps=filter(None,ps.communicate()[0].split('\n')[1:])
+  for app in apps:
+    mem,cpu,proc=app.strip().split()
+
+    if ret.has_key(proc):
+      ret[proc][0]=ret[proc][0]+float(cpu)
+      ret[proc][1]=ret[proc][1]+int(mem)
+    else:
+      ret[proc]=[float(cpu), int(int(mem)*1024)]
+
+  list=[]
+  for proc, det in ret.iteritems():
+    list.append((proc, det[0], det[1]))
+
+  ret = {}
+  for i in reversed(sorted(list, key=lambda list: list[2])):
+    if len(ret) <= 10:
+      ret[i[0]] = {'cpu': i[1], 'memory': i[2]}
+    else:
+      if ret.has_key('other'):
+        ret['other']['cpu'] += i[1]
+        ret['other']['memory'] += i[2]
+      else:
+        ret['other'] = {'cpu': i[1], 'memory': i[2]}
+  return ret
+
+
 def getmemory():
   if debug:
     print("getting memory")
@@ -403,6 +452,9 @@ if args.test is not None:
       elif metric=="uptime":
         print 'Testing Uptime'
         print getuptime()
+      elif metric=="apps":
+        print 'Testing application stats'
+        print getapplication()
       else:
         pass
 else:
@@ -447,6 +499,8 @@ else:
         data['processes']=getprocesses()
       elif metric=="uptime":
         data['uptime']=getuptime()
+      elif metric=="apps":
+        data['apps']=getapplication()
       else:
         pass
 
