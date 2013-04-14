@@ -22,6 +22,7 @@ VERSION="1.0.0"
 API_PROTOCOL='http'
 API_HOST='api.serverstat.io'
 API_VERSION='v1'
+APPLICATION_COUNT=3
 
 try:
   is_64bits = sys.maxsize > 2**32
@@ -228,20 +229,6 @@ def getapplication():
   ret={}
   if debug:
     print("Getting application information")
-  ps=subprocess.Popen(['ps', '-eo', 'rss,comm,%cpu'],stdout=subprocess.PIPE)
-  apps=filter(None,ps.communicate()[0].split('\n')[1:])
-  for app in apps:
-    mem,cpu,proc=app.strip().split(' ')
-    if ret.has_key(proc):
-      ret[proc]=ret[command]+int(mem)
-    else:
-      ret[proc]=int(mem)
-
-
-def getapplication():
-  ret={}
-  if debug:
-    print("Getting application information")
 
   ps=subprocess.Popen(['ps', '-eo', 'rss,%cpu,comm'],stdout=subprocess.PIPE)
   #ps -eo rss,%cpu,comm,cmd | grep -v serverstat |awk '{print $1" "$2" "$3}'
@@ -262,7 +249,7 @@ def getapplication():
 
   ret = {}
   for i in reversed(sorted(list, key=lambda list: list[2])):
-    if len(ret) <= 10:
+    if len(ret) <= APPLICATION_COUNT:
       ret[i[0]] = {'cpu': i[1], 'memory': i[2]}
     else:
       if ret.has_key('other'):
