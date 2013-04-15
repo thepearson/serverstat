@@ -235,7 +235,7 @@ def getapplication():
   #ps=subprocess.Popen(["""ps -eo rss,%cpu,comm,cmd | grep -v serverstat |awk '{print $1" "$2" "$3}'"""], shell=True, stdout=subprocess.PIPE)
   apps=filter(None,ps.communicate()[0].split('\n')[1:])
   for app in apps:
-    mem,cpu,proc=app.strip().split()
+    mem,cpu,proc=app.strip().split()[0:3]
 
     if ret.has_key(proc):
       ret[proc][0]=ret[proc][0]+float(cpu)
