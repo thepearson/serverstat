@@ -350,9 +350,9 @@ args=None;
 
 try:
   import argparse
-  parser = argparse.ArgumentParser(description='Collect core metrics and send to the hostplot.me API')
-  parser.add_argument("key", nargs='?', help="Your hostplot.me account key.")
-  parser.add_argument("host", nargs='?', help="Your hostplot.me host UUID for this host.")
+  parser = argparse.ArgumentParser(description='Collect core metrics and send to the serverstat.io API')
+  parser.add_argument("key", nargs='?', help="Your serverstat.io account key.")
+  parser.add_argument("host", nargs='?', help="Your serverstat.io host UUID for this host.")
   parser.add_argument("-m", "--metrics", default='all', help="The metrics you wish to run.")
   parser.add_argument("-A", "--apihost", default=None, help="API Hostname to use, useful for development.")
   parser.add_argument("-V", "--version", action="store_true", help="Show client version.")
